@@ -3,26 +3,39 @@ pragma solidity ^0.8.11;
 
 import "./ECDSA.sol";
 
-// smart contract to add new user, new cars and any ride on the blockchain
 contract Peershare {
-    mapping(string => string) userSignature;
 
-    function addUser(string calldata userHash, string memory signature)
-        public
-        returns (string memory)
-    {
-        // Verify if the user is unique in blockchain
-        if (bytes(userSignature[userHash]).length > 0) {
-            //console.log(userSignature[userHash]);
-            //user already exists
-            return string("user already exists");
-        }
+  // Store the signature of the car owner
+  // [CarHash => OwnerSignature]
+  mapping(bytes32 => bytes) ownerSignature;
 
-        // Add user signature
-        userSignature[userHash] = signature;
+  // Store the signature of the car borrower
+  // [CarHash => BorrowerSignature]
+  mapping(bytes32 => bytes) borrowerSignature;
 
-        return string("new user added");
-    }
+  /// Add new block on when car is added
+  /// @param  carHash   Unique hash code for the car
+  /// @param  signature Signature that was signed by the owner of the car
+  /// @return  True if success, else throw error 
+  function addCar(bytes32 carHash, bytes memory signature) public returns (bool) {
 
-    // TODO: add new car to blockchain
+    // Get signer from signature
+    address signer = ECDSA.recover(
+      ECDSA.toEthSignedMessageHash(
+        keccak256(abi.encodePacked(carHash, msg.sender))
+      ), signature
+    );
+
+    // Verify if the sender is the owner
+    require(
+      signer == msg.sender,
+      "Unauthorised Signer"
+    );
+
+    // Add owner's signature
+    ownerSignature[carHash] = signature;
+
+    return true;
+
+  }
 }
